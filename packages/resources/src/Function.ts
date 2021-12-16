@@ -160,6 +160,7 @@ export interface FunctionBundleEsbuildConfig {
 
 export class Function extends lambda.Function implements SSTConstruct {
   public readonly _isLiveDevEnabled: boolean;
+  private readonly localId: string;
 
   constructor(scope: cdk.Construct, id: string, props: FunctionProps) {
     const root = scope.node.root as App;
@@ -227,7 +228,7 @@ export class Function extends lambda.Function implements SSTConstruct {
       }
     }
 
-    const logicalId = crypto
+    const localId = crypto
       .createHash("sha1")
       .update(scope.node.id + id)
       .digest("hex")
@@ -303,13 +304,13 @@ export class Function extends lambda.Function implements SSTConstruct {
         });
       }
       State.Function.append(root.appPath, {
-        id: logicalId,
+        id: localId,
         handler: handler,
         runtime: runtime.toString(),
         srcPath: srcPath,
         bundle: props.bundle,
       });
-      this.addEnvironment("SST_FUNCTION_ID", logicalId);
+      this.addEnvironment("SST_FUNCTION_ID", localId);
       this.attachPermissions([
         new iam.PolicyStatement({
           actions: ["s3:*"],
@@ -336,7 +337,7 @@ export class Function extends lambda.Function implements SSTConstruct {
     // Handle build
     else {
       const bundled = Runtime.Handler.bundle({
-        id: logicalId,
+        id: localId,
         root: root.appPath,
         handler: handler,
         runtime: runtime.toString(),
@@ -384,6 +385,7 @@ export class Function extends lambda.Function implements SSTConstruct {
       srcPath,
     });
     this._isLiveDevEnabled = isLiveDevEnabled;
+    this.localId = localId;
   }
 
   public attachPermissions(permissions: Permissions): void {
@@ -396,6 +398,7 @@ export class Function extends lambda.Function implements SSTConstruct {
     return {
       type: "Function" as const,
       data: {
+        localId: this.localId,
         arn: this.functionArn,
       },
     };
